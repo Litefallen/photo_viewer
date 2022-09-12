@@ -1,13 +1,15 @@
-import tkinter
+
 from tkinter import *
 from PIL import ImageTk, Image
 import os
-print(())
+
 root = Tk()
 
 root.title('Image Viewer')
-root.geometry(f'25x{root.winfo_screenheight()}+0+0') # moving root window to the left
+sidebar_sizes = (int(root.winfo_screenwidth() / 8), int(root.winfo_screenheight() - root.winfo_screenheight() / 10))
+root.geometry(f'{sidebar_sizes[0]}x{sidebar_sizes[1]}+0+0')  # moving root window to the left and set its size
 root.iconphoto(False, PhotoImage(file='image.png'))
+
 dir_list = []
 used_list = []
 forbidden_list = []
@@ -15,14 +17,16 @@ pic_list = []
 pic_name_list = []
 pic_container = None
 img_root = None
+last_folder = None
 
 def pic_opener(pic_path):
     global pic_container, img_root
-    if img_root: # making only one pic window opened
+    if img_root:  # making only one pic window opened
         img_root.destroy()
     img_root = Toplevel(root)
     pic_container = ImageTk.PhotoImage(Image.open(pic_path))
-    img_root.geometry(f'{pic_container.width()}x{pic_container.height()}+100+0')
+
+    img_root.geometry(f'{pic_container.width()}x{pic_container.height()}+{sidebar_sizes[0]}+0')
     img_widget = Label(img_root, image=pic_container)
     img_widget.grid()
 
@@ -30,6 +34,7 @@ def pic_opener(pic_path):
 def permission_check(folder):  # check if we have access to the folder
     try:
         os.scandir(folder)
+        return True
     except PermissionError:
         forbidden_list.append(folder)
         print(f'{folder} folder is forbidden')
@@ -41,35 +46,44 @@ def pic_path_add(folder):  # get pic formats and add full path as string to list
 
 
 def pic_finder(initial_folder):
-    permission_check(initial_folder)  # check folder for access
-    # print(pic_list)
-    if initial_folder not in used_list and initial_folder not in forbidden_list:
-        pic_path_add(initial_folder)  # get pics full path to list
+    global last_folder
+    last_folder = initial_folder
+    if permission_check(initial_folder):  # check folder for access
         for i in os.scandir(initial_folder):
             if i.is_dir() and not i.name.startswith('$'):
                 dir_list.append(f'{initial_folder}/{i.name}')
-            used_list.append(initial_folder)
-        for folder in dir_list:
-            pic_finder(folder)
+        pic_path_add(initial_folder)  # get pics full path to list
+        used_list.append(initial_folder)
+    for folder in dir_list:
+            if folder not in used_list and folder not in forbidden_list:
+                pic_finder(folder)
+    return dir_list
 
-    return dir_list, pic_list
-
-
-pic_finder('D:/music')
-
+def recursion_reset_search(folder):
+    if RecursionError:
+        recursion_reset_search(last_folder)
+    else:
+        pic_finder(folder)
 
 class SpecificButton(Button):  # create custom class with fixed command function
     def fixed_command(self, name, dest):
         self.title = name
         self.path = dest
-        fixed_but = Button(root, text=self.title, command=lambda: pic_opener(self.path),width=25)
-        fixed_but.pack(side=TOP)
-        print(fixed_but.winfo_screenwidth())
+        fixed_but = Button(root, text=self.title, command=lambda: pic_opener(self.path), width=sidebar_sizes[0], anchor=W)
+        fixed_but.pack()
 
 
+
+# recursion_reset_search('D:/music')
+pic_finder('D:/music')
 # print(list(os.scandir('D:/music')))
+
+
+root.bind('<Escape>',lambda e:root.quit())
+
 for pic in pic_list:
     cl_but = SpecificButton()
     cl_but.fixed_command(pic[0], pic[1])
+
 
 root.mainloop()
